@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main where
+module Main(main) where
 
 import Control.Monad (replicateM)
 import Control.Monad.IO.Class (liftIO)
@@ -64,7 +64,7 @@ shortyFound tbs = TL.concat
 app :: R.Connection -> ScottyM ()
 app rConn = do
     get "/" $ do
-        uri <- param "uri"
+        uri <- queryParam "uri"
         let parsedUri :: Maybe URI
             parsedUri = parseURI $ TL.unpack uri
         case parsedUri of
@@ -77,7 +77,7 @@ app rConn = do
             Nothing -> text $ shortyAintUri uri
 
     get "/:short" $ do
-        short <- param "short"
+        short <- captureParam "short"
         uri <- liftIO $ getURI rConn short
         case uri of
             Left reply -> text $ TL.pack $ show reply
