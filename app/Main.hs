@@ -26,6 +26,9 @@ randomElement xs = do
 shortyGen :: IO [Char]
 shortyGen = replicateM 7 $ randomElement alphaNum
 
+shortyExists :: R.Connection -> BC.ByteString -> IO (Either R.Reply Bool)
+shortyExists conn shorty = R.runRedis conn $ R.exists shorty
+
 saveURI :: R.Connection -> BC.ByteString -> BC.ByteString -> IO (Either R.Reply R.Status)
 saveURI conn shortURI uri = R.runRedis conn $ R.set shortURI uri
 
@@ -72,8 +75,16 @@ app rConn = do
                 shawty <- liftIO shortyGen
                 let shorty = BC.pack shawty
                     uri' = encodeUtf8 $ TL.toStrict uri
-                resp <- liftIO $ saveURI rConn shorty uri'
-                html $ shortyCreated resp shawty
+
+                existsResp <- liftIO $ shortyExists rConn shorty
+                
+                case existsResp of
+                    Left reply -> text $ TL.pack $ show reply
+                    Right True -> text $ TL.pack $ show $ R.Error "shorty already exists" 
+                    Right False -> do
+                            resp <-liftIO $ saveURI rConn shorty uri' 
+                            html $ shortyCreated resp shawty
+                
             Nothing -> text $ shortyAintUri uri
 
     get "/:short" $ do
